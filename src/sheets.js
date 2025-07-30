@@ -20,8 +20,10 @@ class GoogleSheetService {
         
         this.flowsCache = null
         this.promptsCache = null
+        this.scheduledMessagesCache = null
         this.lastFlowsFetch = 0
         this.lastPromptsFetch = 0
+        this.lastScheduledMessagesFetch = 0
         this.cacheDuration = 5 * 60 * 1000
     }
 
@@ -112,6 +114,92 @@ class GoogleSheetService {
             console.error('❌ Error al obtener prompts de Google Sheets:', error)
             return {}
         }
+    }
+
+    /**
+     * Obtiene los mensajes programados desde la hoja 'Mensajes_Programados'.
+     * @returns {Promise<Array<Object>>} Un array de objetos con los mensajes programados.
+     */
+    async getScheduledMessages() {
+        const now = Date.now()
+        if (this.scheduledMessagesCache && now - this.lastScheduledMessagesFetch < this.cacheDuration) {
+            console.log('✅ Usando caché de mensajes programados.')
+            return this.scheduledMessagesCache
+        }
+
+        console.log('🔄 Caché expirada. Obteniendo mensajes programados desde Google Sheets...')
+        try {
+            const response = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: this.sheetId,
+                range: 'Mensajes_Programados!A2:F',
+            })
+
+            const rows = response.data.values || []
+            const headers = [
+                'fecha',
+                'hora', 
+                'phone',
+                'addAnswer',
+                'media',
+                'estado'
+            ]
+
+            const scheduledMessages = rows.map((row, index) => {
+                const message = { rowIndex: index + 2 } // +2 porque empezamos en A2
+                headers.forEach((header, colIndex) => {
+                    message[header] = row[colIndex] || null
+                })
+                return message
+            })
+
+            this.scheduledMessagesCache = scheduledMessages
+            this.lastScheduledMessagesFetch = now
+            console.log(`✅ Mensajes programados cargados y cacheados correctamente. Total: ${scheduledMessages.length}`)
+            return scheduledMessages
+        } catch (error) {
+            console.error('❌ Error al obtener mensajes programados de Google Sheets:', error)
+            return []
+        }
+    }
+
+    /**
+     * Actualiza el estado de un mensaje programado en Google Sheets.
+     * @param {number} rowIndex - Índice de la fila en Google Sheets (1-indexed)
+     * @param {string} newStatus - Nuevo estado del mensaje
+     * @returns {Promise<boolean>} True si se actualizó correctamente
+     */
+    async updateMessageStatus(rowIndex, newStatus) {
+        try {
+            await this.sheets.spreadsheets.values.update({
+                spreadsheetId: this.sheetId,
+                range: `Mensajes_Programados!F${rowIndex}`,
+                valueInputOption: 'RAW',
+                resource: {
+                    values: [[newStatus]]
+                }
+            })
+
+            // Invalidar caché para forzar actualización en próxima consulta
+            this.scheduledMessagesCache = null
+            console.log(`✅ Estado actualizado en fila ${rowIndex}: ${newStatus}`)
+            return true
+        } catch (error) {
+            console.error(`❌ Error al actualizar estado en fila ${rowIndex}:`, error)
+            return false
+        }
+    }
+
+    /**
+     * Invalida todas las cachés para forzar actualización desde Google Sheets.
+     */
+    invalidateCache() {
+        this.flowsCache = null
+        this.promptsCache = null
+        this.scheduledMessagesCache = null
+        this.lastFlowsFetch = 0
+        this.lastPromptsFetch = 0
+        this.lastScheduledMessagesFetch = 0
+        console.log('🔄 Todas las cachés invalidadas')
     }
 }
 

@@ -9,6 +9,7 @@ Es la solución perfecta para desarrolladores, emprendedores y empresas que busc
 ## ✨ Características Principales
 
 *   **Gestión desde Google Sheets:** Olvídate de tener las respuestas codificadas. Define y modifica todos los flujos de conversación directamente en una hoja de cálculo. Ideal para que equipos no técnicos puedan gestionar el contenido del bot.
+*   **Mensajes Programados:** Sistema avanzado de envío automático de mensajes basado en fecha y hora. Programa campañas, recordatorios y notificaciones sin intervención manual.
 *   **Inteligencia Artificial Integrada:** Gracias a la conexión con la API de **Groq**, el bot puede mantener conversaciones fluidas y responder a preguntas abiertas que no están predefinidas en la hoja de cálculo. Su personalidad y conocimiento son configurables.
 *   **Historial de Conversaciones Inteligente:** El bot recuerda automáticamente las conversaciones anteriores de cada usuario, permitiendo que la IA proporcione respuestas más coherentes y contextualizadas basadas en el historial de chat.
 *   **Respuestas Multimedia:** Envía no solo texto, sino también imágenes y videos para crear una experiencia de usuario más rica y atractiva.
@@ -25,10 +26,15 @@ Este proyecto utiliza una arquitectura moderna que separa la lógica de la data:
 1.  **Base de Conocimiento (Google Sheets):**
     *   Una pestaña para **Flujos** define las respuestas automáticas basadas en palabras clave.
     *   Una pestaña para **IA_Prompts** configura la personalidad, el conocimiento y los parámetros técnicos del motor de IA.
+    *   Una pestaña para **Mensajes_Programados** gestiona el envío automático de mensajes por fecha y hora.
 2.  **Motor del Chatbot (Node.js):**
     *   Al recibir un mensaje, primero busca una coincidencia en los flujos de la hoja de cálculo.
     *   Si no encuentra una respuesta predefinida, delega la conversación al motor de **IA (Groq)** para que genere una respuesta inteligente en tiempo real.
-3.  **Sistema de Historial Inteligente:**
+3.  **Sistema de Mensajes Programados:**
+    *   Verifica automáticamente cada minuto los mensajes programados pendientes.
+    *   Envía mensajes automáticamente cuando coincide la fecha y hora programada.
+    *   Actualiza el estado de los mensajes (Pendiente/Enviado/Error) en tiempo real.
+4.  **Sistema de Historial Inteligente:**
     *   Cada conversación se guarda automáticamente en archivos JSON individuales por usuario.
     *   La IA utiliza el historial de conversaciones para proporcionar respuestas más coherentes y contextualizadas.
     *   El sistema limpia automáticamente los historiales antiguos para optimizar el rendimiento.

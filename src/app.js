@@ -5,6 +5,7 @@ import { BaileysProvider as Provider } from '@builderbot/provider-baileys'
 import googleSheetService from './sheets.js'
 import groqService from './ai-chat.js'
 import chatHistoryService from './chat-history.js'
+import scheduledMessageService from './scheduled-messages.js'
 
 const PORT = process.env.PORT ?? 3008
 
@@ -43,6 +44,7 @@ const dynamicFlow = addKeyword(EVENTS.WELCOME)
 const main = async () => {
     await googleSheetService.getFlows()
     await googleSheetService.getPrompts()
+    await googleSheetService.getScheduledMessages()
     
     setInterval(async () => {
         console.log('🧹 Iniciando limpieza automática del historial...')
@@ -52,6 +54,9 @@ const main = async () => {
     
     const stats = await chatHistoryService.getStats()
     console.log('📊 Estadísticas del historial:', stats)
+    
+    const scheduledStats = await scheduledMessageService.getStats()
+    console.log('📅 Estadísticas de mensajes programados:', scheduledStats)
 
     const adapterFlow = createFlow([dynamicFlow])
     const adapterProvider = createProvider(Provider)
@@ -62,6 +67,9 @@ const main = async () => {
         provider: adapterProvider,
         database: adapterDB,
     })
+    
+    // Inicializar servicio de mensajes programados
+    scheduledMessageService.initialize(adapterProvider)
 
     adapterProvider.server.post(
         '/v1/messages',
@@ -99,6 +107,33 @@ const main = async () => {
 
             res.writeHead(200, { 'Content-Type': 'application/json' })
             return res.end(JSON.stringify({ status: 'ok', number, intent }))
+        })
+    )
+
+    adapterProvider.server.get(
+        '/v1/scheduled-stats',
+        handleCtx(async (bot, req, res) => {
+            const stats = await scheduledMessageService.getStats()
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            return res.end(JSON.stringify({ status: 'ok', stats }))
+        })
+    )
+
+    adapterProvider.server.post(
+        '/v1/scheduled-check',
+        handleCtx(async (bot, req, res) => {
+            await scheduledMessageService.forceCheck()
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            return res.end(JSON.stringify({ status: 'ok', message: 'Verificación forzada completada' }))
+        })
+    )
+
+    adapterProvider.server.post(
+        '/v1/scheduled-restart',
+        handleCtx(async (bot, req, res) => {
+            scheduledMessageService.restart()
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            return res.end(JSON.stringify({ status: 'ok', message: 'Servicio reiniciado' }))
         })
     )
 
